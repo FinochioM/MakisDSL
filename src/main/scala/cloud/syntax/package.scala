@@ -1,6 +1,8 @@
 package cloud.syntax
 
 import cloud.*
+import cloud.builder.*
+import cloud.validation.*
 
 extension [T <: CloudResource](resource: T)(using builder: CloudAppBuilder)
   def dependsOn(dependencies: CloudResource*): T =
@@ -34,6 +36,11 @@ extension (storage: ObjectStorage)(using builder: CloudAppBuilder)
         "RestrictPublicBuckets" -> blocked
       ))
     )
+    builder.addResource(updated)
+    updated
+
+  def dependsOn(dependencies: CloudResource*): ObjectStorage =
+    val updated = storage.copy(dependencies = dependencies.toList)
     builder.addResource(updated)
     updated
 
@@ -80,3 +87,23 @@ extension (table: NoSqlTable)(using builder: CloudAppBuilder)
     )
     builder.addResource(updated)
     updated
+
+extension (builder: ServerlessFunctionBuilder[RuntimeSet, HandlerSet])
+  def build(using cloudBuilder: CloudAppBuilder): ServerlessFunction =
+    val resource = ServerlessFunction(
+      builder.name,
+      builder.properties,
+      builder.dependencies
+    )
+    cloudBuilder.addResource(resource)
+    resource
+
+extension (builder: NoSqlTableBuilder[HashKeySet])
+  def build(using cloudBuilder: CloudAppBuilder): NoSqlTable =
+    val resource = NoSqlTable(
+      builder.name,
+      builder.properties,
+      builder.dependencies
+    )
+    cloudBuilder.addResource(resource)
+    resource

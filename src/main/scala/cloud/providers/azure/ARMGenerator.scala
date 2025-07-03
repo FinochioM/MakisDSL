@@ -24,7 +24,7 @@ object ARMGenerator:
       Json.obj(
         m.asInstanceOf[Map[String, Any]]
           .map((k, v) => k -> encodeValue(v))
-          .toSeq: _*
+          .toSeq*
       )
     case _ => value.toString.asJson
 
