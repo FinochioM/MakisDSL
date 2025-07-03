@@ -21,7 +21,7 @@ object CloudFormationGenerator:
             )
           case _ => value.toString.asJson
         )
-      }.toSeq: _*
+      }.toSeq*
     )
   }
 
@@ -29,7 +29,7 @@ object CloudFormationGenerator:
     Json.obj(
       "AWSTemplateFormatVersion" -> "2010-09-09".asJson,
       "Resources" -> Json.obj(
-        app.resources.map(generateResource): _*
+        app.resources.map(generateResource)*
       )
     )
 
