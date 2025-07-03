@@ -1,10 +1,10 @@
-package cloud.providers.azure
+package cloud.providers.gcp
 
 import cloud.*
 import io.circe.*
 import io.circe.syntax.*
 
-object ARMGenerator:
+object DeploymentManagerGenerator:
   given Encoder[CloudConfig] = Encoder.instance { config =>
     Json.obj(
       config.map { case (key, value) =>
@@ -24,30 +24,28 @@ object ARMGenerator:
       Json.obj(
         m.asInstanceOf[Map[String, Any]]
           .map((k, v) => k -> encodeValue(v))
-          .toSeq: _*
+          .toSeq*
       )
     case _ => value.toString.asJson
 
   def generate(app: CloudApp): Json =
     Json.obj(
-      "$schema" -> "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#".asJson,
-      "contentVersion" -> "1.0.0.0".asJson,
       "resources" -> Json.fromValues(app.resources.map(generateResource))
     )
 
   private def generateResource(resource: CloudResource): Json =
     val baseResource = Json.obj(
-      "type" -> mapResourceType(resource).asJson,
-      "apiVersion" -> getApiVersion(resource).asJson,
       "name" -> resource.name.asJson,
-      "location" -> "[resourceGroup().location]".asJson,
+      "type" -> mapResourceType(resource).asJson,
       "properties" -> mapProperties(resource).asJson
     )
 
     if (resource.dependencies.nonEmpty) {
       baseResource.deepMerge(
         Json.obj(
-          "dependsOn" -> resource.dependencies.map(_.name).asJson
+          "metadata" -> Json.obj(
+            "dependsOn" -> resource.dependencies.map(_.name).asJson
+          )
         )
       )
     } else {
@@ -55,14 +53,9 @@ object ARMGenerator:
     }
 
   private def mapResourceType(resource: CloudResource): String = resource match
-    case _: ObjectStorage      => "Microsoft.Storage/storageAccounts"
-    case _: ServerlessFunction => "Microsoft.Web/sites"
-    case _: NoSqlTable         => "Microsoft.DocumentDB/databaseAccounts"
-
-  private def getApiVersion(resource: CloudResource): String = resource match
-    case _: ObjectStorage      => "2023-01-01"
-    case _: ServerlessFunction => "2023-01-01"
-    case _: NoSqlTable         => "2023-04-15"
+    case _: ObjectStorage      => "storage.v1.bucket"
+    case _: ServerlessFunction => "cloudfunctions.v1.function"
+    case _: NoSqlTable         => "firestore.v1.database"
 
   private def mapProperties(resource: CloudResource): Json = resource match
     case storage: ObjectStorage       => mapStorageProperties(storage)
@@ -71,48 +64,39 @@ object ARMGenerator:
 
   private def mapStorageProperties(storage: ObjectStorage): Json =
     val baseProps = Json.obj(
-      "sku" -> Json.obj("name" -> "Standard_LRS".asJson),
-      "kind" -> "StorageV2".asJson,
-      "accessTier" -> "Hot".asJson
+      "location" -> "US".asJson,
+      "storageClass" -> "STANDARD".asJson
     )
 
     // map versioning if present
     storage.properties.get("VersioningConfiguration") match
       case Some(_) =>
-        baseProps.deepMerge(Json.obj("isVersioningEnabled" -> true.asJson))
+        baseProps.deepMerge(
+          Json.obj(
+            "versioning" -> Json.obj("enabled" -> true.asJson)
+          )
+        )
       case None => baseProps
 
   private def mapFunctionProperties(function: ServerlessFunction): Json =
+    val runtime = function.properties.getOrElse("Runtime", "nodejs18")
+    val handler = function.properties.getOrElse("Handler", "index.handler")
+
     Json.obj(
-      "kind" -> "functionapp".asJson,
-      "siteConfig" -> Json.obj(
-        "appSettings" -> Json.fromValues(
-          Seq(
-            Json.obj(
-              "name" -> "FUNCTIONS_WORKER_RUNTIME".asJson,
-              "value" -> "node".asJson
-            ),
-            Json.obj(
-              "name" -> "WEBSITE_NODE_DEFAULT_VERSION".asJson,
-              "value" -> "~18".asJson
-            )
-          )
-        )
-      )
+      "location" -> "us-central1".asJson,
+      "runtime" -> mapGcpRuntime(runtime.toString).asJson,
+      "entryPoint" -> handler.toString.split("\\.").head.asJson,
+      "sourceArchiveUrl" -> "gs://my-source-bucket/function.zip".asJson
     )
 
   private def mapTableProperties(table: NoSqlTable): Json =
     Json.obj(
-      "databaseAccountOfferType" -> "Standard".asJson,
-      "consistencyPolicy" -> Json.obj(
-        "defaultConsistencyLevel" -> "Session".asJson
-      ),
-      "locations" -> Json.fromValues(
-        Seq(
-          Json.obj(
-            "locationName" -> "[resourceGroup().location]".asJson,
-            "failoverPriority" -> 0.asJson
-          )
-        )
-      )
+      "location" -> "us-central1".asJson,
+      "type" -> "FIRESTORE_NATIVE".asJson
     )
+
+  private def mapGcpRuntime(awsRuntime: String): String = awsRuntime match
+    case r if r.startsWith("nodejs") => "nodejs18"
+    case r if r.startsWith("python") => "python39"
+    case r if r.startsWith("java")   => "java17"
+    case _                           => "nodejs18"
