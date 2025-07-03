@@ -1,5 +1,8 @@
 package cloud
 
+import cloud.builder.*
+import cloud.validation.*
+
 case class ObjectStorage(
     name: String,
     properties: CloudConfig = Map.empty,
@@ -28,12 +31,10 @@ def objectStorage(name: String)(using builder: CloudAppBuilder): ObjectStorage =
 
 def serverlessFunction(name: String)(using
     builder: CloudAppBuilder
-): ServerlessFunction =
-  val resource = ServerlessFunction(name)
-  builder.addResource(resource)
-  resource
+): ServerlessFunctionBuilder[RuntimeUnset, HandlerUnset] =
+  ServerlessFunctionBuilder[RuntimeUnset, HandlerUnset](name)
 
-def noSqlTable(name: String)(using builder: CloudAppBuilder): NoSqlTable =
-  val resource = NoSqlTable(name)
-  builder.addResource(resource)
-  resource
+def noSqlTable(name: String)(using
+    builder: CloudAppBuilder
+): NoSqlTableBuilder[HashKeyUnset] =
+  NoSqlTableBuilder[HashKeyUnset](name)

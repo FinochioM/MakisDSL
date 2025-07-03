@@ -13,7 +13,6 @@ extension [T <: CloudResource](resource: T)(using builder: CloudAppBuilder)
         f.copy(dependencies = dependencies.toList).asInstanceOf[T]
       case t: NoSqlTable =>
         t.copy(dependencies = dependencies.toList).asInstanceOf[T]
-
     builder.addResource(updated)
     updated
 
@@ -39,57 +38,10 @@ extension (storage: ObjectStorage)(using builder: CloudAppBuilder)
     builder.addResource(updated)
     updated
 
-  def dependsOn(dependencies: CloudResource*): ObjectStorage =
-    val updated = storage.copy(dependencies = dependencies.toList)
-    builder.addResource(updated)
-    updated
-
-extension (function: ServerlessFunction)(using builder: CloudAppBuilder)
-  def withRuntime(runtime: String): ServerlessFunction =
-    val updated =
-      function.copy(properties = function.properties + ("Runtime" -> runtime))
-    builder.addResource(updated)
-    updated
-
-  def withHandler(handler: String): ServerlessFunction =
-    val updated =
-      function.copy(properties = function.properties + ("Handler" -> handler))
-    builder.addResource(updated)
-    updated
-
-  def withCode(code: String): ServerlessFunction =
-    val updated = function.copy(properties =
-      function.properties + ("Code" -> Map("ZipFile" -> code))
-    )
-    builder.addResource(updated)
-    updated
-
-  def withCode(bucketRef: ResourceReference): ServerlessFunction =
-    val updated = function.copy(properties =
-      function.properties + ("Code" -> Map(
-        "S3Bucket" -> Map("Ref" -> bucketRef.name)
-      ))
-    )
-    builder.addResource(updated)
-    updated
-
-extension (table: NoSqlTable)(using builder: CloudAppBuilder)
-  def withHashKey(keyName: String, keyType: String = "S"): NoSqlTable =
-    val keySchema = List(Map("AttributeName" -> keyName, "KeyType" -> "HASH"))
-    val attributeDefinitions = List(
-      Map("AttributeName" -> keyName, "AttributeType" -> keyType)
-    )
-    val updated = table.copy(properties =
-      table.properties +
-        ("KeySchema" -> keySchema) +
-        ("AttributeDefinitions" -> attributeDefinitions) +
-        ("BillingMode" -> "PAY_PER_REQUEST")
-    )
-    builder.addResource(updated)
-    updated
-
-extension (builder: ServerlessFunctionBuilder[RuntimeSet, HandlerSet])
-  def build(using cloudBuilder: CloudAppBuilder): ServerlessFunction =
+extension (
+    builder: ServerlessFunctionBuilder[RuntimeSet, HandlerSet]
+)(using cloudBuilder: CloudAppBuilder)
+  def build: ServerlessFunction =
     val resource = ServerlessFunction(
       builder.name,
       builder.properties,
@@ -98,8 +50,10 @@ extension (builder: ServerlessFunctionBuilder[RuntimeSet, HandlerSet])
     cloudBuilder.addResource(resource)
     resource
 
-extension (builder: NoSqlTableBuilder[HashKeySet])
-  def build(using cloudBuilder: CloudAppBuilder): NoSqlTable =
+extension (
+    builder: NoSqlTableBuilder[HashKeySet]
+)(using cloudBuilder: CloudAppBuilder)
+  def build: NoSqlTable =
     val resource = NoSqlTable(
       builder.name,
       builder.properties,

@@ -1,11 +1,10 @@
 class ResourceDepTest extends munit.FunSuite {
+  import cloud.*
+  import cloud.CloudProvider.*
+  import cloud.syntax.*
+  import cloud.providers.aws.CloudFormationGenerator
+  import io.circe.parser.*
   test("resources can depend on each other") {
-    import cloud.*
-    import cloud.CloudProvider.*
-    import cloud.syntax.*
-    import cloud.providers.aws.CloudFormationGenerator
-    import io.circe.parser.*
-
     val myApp = cloudApp(provider = AWS) {
       val bucket = objectStorage("my-code-bucket")
         .withVersioning(true)
@@ -15,10 +14,12 @@ class ResourceDepTest extends munit.FunSuite {
         .withHandler("index.handler")
         .withCode(bucket.reference)
         .dependsOn(bucket)
+        .build
 
       val table = noSqlTable("my-users-table")
         .withHashKey("userId", "S")
         .dependsOn(function)
+        .build
     }
 
     val cfTemplate = CloudFormationGenerator.generate(myApp)

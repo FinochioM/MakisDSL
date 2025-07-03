@@ -12,6 +12,7 @@ class TriCloudTest extends munit.FunSuite {
         .withHandler("index.handler")
         .withCode(bucket.reference)
         .dependsOn(bucket)
+        .build
 
       val table = noSqlTable("my-users-table")
         .withHashKey("userId", "S")
