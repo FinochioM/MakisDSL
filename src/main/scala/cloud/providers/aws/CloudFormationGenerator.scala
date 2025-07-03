@@ -58,3 +58,7 @@ object CloudFormationGenerator:
     case _: ObjectStorage      => "AWS::S3::Bucket"
     case _: ServerlessFunction => "AWS::Lambda::Function"
     case _: NoSqlTable         => "AWS::DynamoDB::Table"
+    case _: VirtualNetwork     => "AWS::EC2::VPC"
+    case _: SecurityGroup      => "AWS::EC2::SecurityGroup"
+    case _: ApplicationLoadBalancer =>
+      "AWS::ElasticLoadBalancingV2::LoadBalancer"

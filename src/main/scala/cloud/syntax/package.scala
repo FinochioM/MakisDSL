@@ -61,3 +61,28 @@ extension (
     )
     cloudBuilder.addResource(resource)
     resource
+
+extension (sg: SecurityGroup)(using builder: CloudAppBuilder)
+  def allowInbound(protocol: String, port: Int): SecurityGroup =
+    val currentRules = sg.properties
+      .getOrElse("SecurityGroupIngress", List.empty)
+      .asInstanceOf[List[Map[String, Any]]]
+    val newRule = Map(
+      "IpProtocol" -> protocol.toLowerCase,
+      "FromPort" -> port,
+      "ToPort" -> port,
+      "CidrIp" -> "0.0.0.0/0"
+    )
+    val updated = sg.copy(properties =
+      sg.properties + ("SecurityGroupIngress" -> (currentRules :+ newRule))
+    )
+    builder.addResource(updated)
+    updated
+
+extension (alb: ApplicationLoadBalancer)(using builder: CloudAppBuilder)
+  def withTargets(targets: CloudResource*): ApplicationLoadBalancer =
+    val updated = alb.copy(properties =
+      alb.properties + ("Targets" -> targets.map(_.reference.name).toList)
+    )
+    builder.addResource(updated)
+    updated

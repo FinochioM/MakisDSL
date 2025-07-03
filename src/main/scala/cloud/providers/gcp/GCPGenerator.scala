@@ -56,11 +56,13 @@ object DeploymentManagerGenerator:
     case _: ObjectStorage      => "storage.v1.bucket"
     case _: ServerlessFunction => "cloudfunctions.v1.function"
     case _: NoSqlTable         => "firestore.v1.database"
+    case _: VirtualNetwork     => "compute.v1.network"
 
   private def mapProperties(resource: CloudResource): Json = resource match
     case storage: ObjectStorage       => mapStorageProperties(storage)
     case function: ServerlessFunction => mapFunctionProperties(function)
     case table: NoSqlTable            => mapTableProperties(table)
+    case network: VirtualNetwork      => mapNetworkProperties(network)
 
   private def mapStorageProperties(storage: ObjectStorage): Json =
     val baseProps = Json.obj(
@@ -100,3 +102,11 @@ object DeploymentManagerGenerator:
     case r if r.startsWith("python") => "python39"
     case r if r.startsWith("java")   => "java17"
     case _                           => "nodejs18"
+
+  private def mapNetworkProperties(network: VirtualNetwork): Json =
+    Json.obj(
+      "autoCreateSubnetworks" -> false.asJson,
+      "routingConfig" -> Json.obj(
+        "routingMode" -> "REGIONAL".asJson
+      )
+    )

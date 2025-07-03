@@ -58,16 +58,19 @@ object ARMGenerator:
     case _: ObjectStorage      => "Microsoft.Storage/storageAccounts"
     case _: ServerlessFunction => "Microsoft.Web/sites"
     case _: NoSqlTable         => "Microsoft.DocumentDB/databaseAccounts"
+    case _: VirtualNetwork     => "Microsoft.Network/virtualNetworks"
 
   private def getApiVersion(resource: CloudResource): String = resource match
     case _: ObjectStorage      => "2023-01-01"
     case _: ServerlessFunction => "2023-01-01"
     case _: NoSqlTable         => "2023-04-15"
+    case _: VirtualNetwork     => "2023-04-01"
 
   private def mapProperties(resource: CloudResource): Json = resource match
     case storage: ObjectStorage       => mapStorageProperties(storage)
     case function: ServerlessFunction => mapFunctionProperties(function)
     case table: NoSqlTable            => mapTableProperties(table)
+    case network: VirtualNetwork      => mapNetworkProperties(network)
 
   private def mapStorageProperties(storage: ObjectStorage): Json =
     val baseProps = Json.obj(
@@ -114,5 +117,12 @@ object ARMGenerator:
             "failoverPriority" -> 0.asJson
           )
         )
+      )
+    )
+
+  private def mapNetworkProperties(network: VirtualNetwork): Json =
+    Json.obj(
+      "addressSpace" -> Json.obj(
+        "addressPrefixes" -> Json.fromValues(Seq("10.0.0.0/16".asJson))
       )
     )

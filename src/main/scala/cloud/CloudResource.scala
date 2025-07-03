@@ -11,6 +11,10 @@ trait CloudResource:
 trait StorageResource extends CloudResource
 trait ComputeResource extends CloudResource
 trait DatabaseResource extends CloudResource
+trait NetworkResource extends CloudResource
+trait SecurityResource extends CloudResource
+trait LoadBalancerResource extends CloudResource
+trait MessagingResource extends CloudResource
 
 case class ResourceReference(resource: CloudResource):
   def name: String = resource.name
