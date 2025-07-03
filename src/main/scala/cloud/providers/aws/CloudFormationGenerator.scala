@@ -19,7 +19,7 @@ object CloudFormationGenerator:
                 Json.obj(
                   m.asInstanceOf[Map[String, Any]]
                     .map((k, v) => k -> v.toString.asJson)
-                    .toSeq: _*
+                    .toSeq*
                 )
               case other => other.toString.asJson
             })
@@ -27,7 +27,7 @@ object CloudFormationGenerator:
             Json.obj(
               m.asInstanceOf[Map[String, Any]]
                 .map((k, v) => k -> v.toString.asJson)
-                .toSeq: _*
+                .toSeq*
             )
           case _ => value.toString.asJson
         )
@@ -44,10 +44,22 @@ object CloudFormationGenerator:
     )
 
   private def generateResource(resource: CloudResource): (String, Json) =
-    resource.name -> Json.obj(
+    val baseResource = Json.obj(
       "Type" -> mapResourceType(resource).asJson,
       "Properties" -> resource.properties.asJson
     )
+
+    val resourceWithDeps = if (resource.dependencies.nonEmpty) {
+      baseResource.deepMerge(
+        Json.obj(
+          "DependsOn" -> resource.dependencies.map(_.name).asJson
+        )
+      )
+    } else {
+      baseResource
+    }
+
+    resource.name -> resourceWithDeps
 
   private def mapResourceType(resource: CloudResource): String = resource match
     case _: ObjectStorage      => "AWS::S3::Bucket"

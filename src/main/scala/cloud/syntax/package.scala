@@ -2,6 +2,19 @@ package cloud.syntax
 
 import cloud.*
 
+extension [T <: CloudResource](resource: T)(using builder: CloudAppBuilder)
+  def dependsOn(dependencies: CloudResource*): T =
+    val updated = resource match
+      case s: ObjectStorage =>
+        s.copy(dependencies = dependencies.toList).asInstanceOf[T]
+      case f: ServerlessFunction =>
+        f.copy(dependencies = dependencies.toList).asInstanceOf[T]
+      case t: NoSqlTable =>
+        t.copy(dependencies = dependencies.toList).asInstanceOf[T]
+
+    builder.addResource(updated)
+    updated
+
 extension (storage: ObjectStorage)(using builder: CloudAppBuilder)
   def withVersioning(enabled: Boolean = true): ObjectStorage =
     val updated = storage.copy(properties =
@@ -37,9 +50,18 @@ extension (function: ServerlessFunction)(using builder: CloudAppBuilder)
     builder.addResource(updated)
     updated
 
-  def withCode(zipFile: String): ServerlessFunction =
+  def withCode(code: String): ServerlessFunction =
     val updated = function.copy(properties =
-      function.properties + ("Code" -> Map("ZipFile" -> zipFile))
+      function.properties + ("Code" -> Map("ZipFile" -> code))
+    )
+    builder.addResource(updated)
+    updated
+
+  def withCode(bucketRef: ResourceReference): ServerlessFunction =
+    val updated = function.copy(properties =
+      function.properties + ("Code" -> Map(
+        "S3Bucket" -> Map("Ref" -> bucketRef.name)
+      ))
     )
     builder.addResource(updated)
     updated

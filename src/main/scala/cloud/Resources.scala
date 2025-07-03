@@ -1,15 +1,24 @@
 package cloud
 
-case class ObjectStorage(name: String, properties: CloudConfig = Map.empty)
-    extends StorageResource:
+case class ObjectStorage(
+    name: String,
+    properties: CloudConfig = Map.empty,
+    override val dependencies: List[CloudResource] = List.empty
+) extends StorageResource:
   def resourceType: String = "ObjectStorage"
 
-case class ServerlessFunction(name: String, properties: CloudConfig = Map.empty)
-    extends ComputeResource:
+case class ServerlessFunction(
+    name: String,
+    properties: CloudConfig = Map.empty,
+    override val dependencies: List[CloudResource] = List.empty
+) extends ComputeResource:
   def resourceType: String = "ServerlessFunction"
 
-case class NoSqlTable(name: String, properties: CloudConfig = Map.empty)
-    extends DatabaseResource:
+case class NoSqlTable(
+    name: String,
+    properties: CloudConfig = Map.empty,
+    override val dependencies: List[CloudResource] = List.empty
+) extends DatabaseResource:
   def resourceType: String = "NoSqlTable"
 
 def objectStorage(name: String)(using builder: CloudAppBuilder): ObjectStorage =
