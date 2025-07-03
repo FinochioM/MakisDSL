@@ -53,16 +53,20 @@ object DeploymentManagerGenerator:
     }
 
   private def mapResourceType(resource: CloudResource): String = resource match
-    case _: ObjectStorage      => "storage.v1.bucket"
-    case _: ServerlessFunction => "cloudfunctions.v1.function"
-    case _: NoSqlTable         => "firestore.v1.database"
-    case _: VirtualNetwork     => "compute.v1.network"
+    case _: ObjectStorage           => "storage.v1.bucket"
+    case _: ServerlessFunction      => "cloudfunctions.v1.function"
+    case _: NoSqlTable              => "firestore.v1.database"
+    case _: VirtualNetwork          => "compute.v1.network"
+    case _: SecurityGroup           => "compute.v1.firewall"
+    case _: ApplicationLoadBalancer => "compute.v1.forwardingRule"
 
   private def mapProperties(resource: CloudResource): Json = resource match
     case storage: ObjectStorage       => mapStorageProperties(storage)
     case function: ServerlessFunction => mapFunctionProperties(function)
     case table: NoSqlTable            => mapTableProperties(table)
     case network: VirtualNetwork      => mapNetworkProperties(network)
+    case sg: SecurityGroup            => mapSecurityGroupProperties(sg)
+    case alb: ApplicationLoadBalancer => mapLoadBalancerProperties(alb)
 
   private def mapStorageProperties(storage: ObjectStorage): Json =
     val baseProps = Json.obj(
@@ -110,3 +114,53 @@ object DeploymentManagerGenerator:
         "routingMode" -> "REGIONAL".asJson
       )
     )
+
+  private def mapSecurityGroupProperties(sg: SecurityGroup): Json =
+    val baseProps = Json.obj(
+      "direction" -> "INGRESS".asJson,
+      "priority" -> 1000.asJson,
+      "network" -> "global/networks/default".asJson
+    )
+
+    sg.properties.get("SecurityGroupIngress") match
+      case Some(rules: List[_]) =>
+        val gcpRules = rules.asInstanceOf[List[Map[String, Any]]].map { rule =>
+          Json.obj(
+            "IPProtocol" -> rule("IpProtocol").toString.toLowerCase.asJson,
+            "ports" -> Json.fromValues(Seq(rule("FromPort").toString.asJson))
+          )
+        }
+        baseProps.deepMerge(
+          Json.obj(
+            "allowed" -> Json.fromValues(gcpRules),
+            "sourceRanges" -> Json.fromValues(Seq("0.0.0.0/0".asJson))
+          )
+        )
+      case None => baseProps
+
+  private def mapLoadBalancerProperties(alb: ApplicationLoadBalancer): Json =
+    val baseProps = Json.obj(
+      "region" -> "us-central1".asJson,
+      "loadBalancingScheme" -> "EXTERNAL".asJson,
+      "portRange" -> "80".asJson
+    )
+
+    alb.properties.get("Targets") match
+      case Some(targets: List[_]) =>
+        baseProps.deepMerge(
+          Json.obj(
+            "target" -> "global/targetHttpProxies/my-target-proxy".asJson,
+            "backendServices" -> Json.obj(
+              "backends" -> Json.fromValues(
+                targets
+                  .asInstanceOf[List[String]]
+                  .map(target =>
+                    Json.obj(
+                      "group" -> s"zones/us-central1-a/instanceGroups/$target".asJson
+                    )
+                  )
+              )
+            )
+          )
+        )
+      case None => baseProps
