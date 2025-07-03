@@ -13,11 +13,21 @@ object CloudFormationGenerator:
           case i: Int     => i.asJson
           case d: Double  => d.asJson
           case b: Boolean => b.asJson
-          case l: List[_] => Json.fromValues(l.map(_.toString.asJson))
+          case l: List[_] =>
+            Json.fromValues(l.map {
+              case m: Map[_, _] =>
+                Json.obj(
+                  m.asInstanceOf[Map[String, Any]]
+                    .map((k, v) => k -> v.toString.asJson)
+                    .toSeq: _*
+                )
+              case other => other.toString.asJson
+            })
           case m: Map[_, _] =>
-            Json.fromFields(
+            Json.obj(
               m.asInstanceOf[Map[String, Any]]
                 .map((k, v) => k -> v.toString.asJson)
+                .toSeq: _*
             )
           case _ => value.toString.asJson
         )
