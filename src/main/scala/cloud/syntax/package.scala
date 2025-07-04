@@ -3,6 +3,9 @@ package cloud.syntax
 import cloud.*
 import cloud.builder.*
 import cloud.validation.*
+import cloud.macros.EnvMacro.{env, env as envWithDefault}
+
+export cloud.macros.EnvMacro.{env}
 
 extension [T <: CloudResource](resource: T)(using builder: CloudAppBuilder)
   def dependsOn(dependencies: CloudResource*): T =

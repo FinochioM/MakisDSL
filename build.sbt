@@ -7,6 +7,9 @@ lazy val root = project
     name := "MakisDSL",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := scala3Version,
+    scalacOptions ++= Seq(
+      "-experimental"
+    ),
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "1.0.0" % Test,
       "io.circe" %% "circe-core" % circeVersion,
